@@ -80,10 +80,14 @@ class PostgresVaultFS(VaultFS):
                         kb_id, self.user_id, filename, title, dir_path, file_type, content, tags,
                         date, _json.dumps(metadata) if metadata else None,
                     )
-                except asyncpg.UniqueViolationError:
-                    raise DuplicateDocumentError(dir_path, filename)
-                if content and file_type in ("md", "txt"):
-                    chunks = chunk_text(content)
+                except asyncpg.UniqueViolationError as e:
+                    # Only re-raise as DuplicateDocumentError for the path/filename index.
+                    # Any other unique violation is a different bug worth surfacing.
+                    if getattr(e, "constraint_name", "") == "idx_documents_unique_active":
+                        raise DuplicateDocumentError(dir_path, filename)
+                    raise
+                if file_type in ("md", "txt"):
+                    chunks = chunk_text(content or "")
                     await store_chunks_pg(conn, str(row["id"]), self.user_id, kb_id, chunks)
         return dict(row)
 
@@ -120,8 +124,8 @@ class PostgresVaultFS(VaultFS):
         async with pool.acquire() as conn:
             async with conn.transaction():
                 row = await conn.fetchrow(sql, *args)
-                if row and content and row["file_type"] in ("md", "txt"):
-                    chunks = chunk_text(content)
+                if row and row["file_type"] in ("md", "txt"):
+                    chunks = chunk_text(content or "")
                     await store_chunks_pg(
                         conn, str(row["id"]), self.user_id,
                         str(row["knowledge_base_id"]), chunks,

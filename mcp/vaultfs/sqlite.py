@@ -142,12 +142,15 @@ class SqliteVaultFS(VaultFS):
                  file_type, content, json.dumps(tags), date,
                  json.dumps(metadata) if metadata else None, doc_number),
             )
+            if file_type in ("md", "txt"):
+                await store_chunks_sqlite(db, doc_id, chunk_text(content or ""))
+            await db.commit()
         except aiosqlite.IntegrityError:
+            await db.rollback()
             raise DuplicateDocumentError(dir_path, filename)
-
-        if content and file_type in ("md", "txt"):
-            await store_chunks_sqlite(db, doc_id, chunk_text(content))
-        await db.commit()
+        except Exception:
+            await db.rollback()
+            raise
         return {"id": doc_id, "filename": filename, "path": dir_path}
 
     async def update_document(self, doc_id: str, content: str, tags: list[str] | None = None, title: str | None = None, date: str | None = None, metadata: dict | None = None) -> dict | None:
@@ -169,19 +172,23 @@ class SqliteVaultFS(VaultFS):
             args.append(json.dumps(metadata))
 
         args.append(doc_id)
-        await db.execute(
-            f"UPDATE documents SET {', '.join(sets)} WHERE id = ?",
-            tuple(args),
-        )
+        try:
+            await db.execute(
+                f"UPDATE documents SET {', '.join(sets)} WHERE id = ?",
+                tuple(args),
+            )
 
-        cursor = await db.execute(
-            "SELECT file_type FROM documents WHERE id = ?", (doc_id,),
-        )
-        row = await cursor.fetchone()
-        if row and content and row[0] in ("md", "txt"):
-            await store_chunks_sqlite(db, doc_id, chunk_text(content))
+            cursor = await db.execute(
+                "SELECT file_type FROM documents WHERE id = ?", (doc_id,),
+            )
+            row = await cursor.fetchone()
+            if row and row[0] in ("md", "txt"):
+                await store_chunks_sqlite(db, doc_id, chunk_text(content or ""))
 
-        await db.commit()
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            raise
         return None
 
     async def archive_documents(self, doc_ids: list[str]) -> int:
