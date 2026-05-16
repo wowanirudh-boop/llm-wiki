@@ -31,7 +31,19 @@ if settings.LOGFIRE_TOKEN:
     logfire.configure(token=settings.LOGFIRE_TOKEN, service_name="supavault-mcp")
     logfire.instrument_asyncpg()
 
-_mcp_host = urlparse(settings.MCP_URL).hostname or "localhost"
+def _build_allowed_hosts(mcp_url: str) -> list[str]:
+    """Build the allowed_hosts list for TransportSecuritySettings.
+
+    Returns both the bare hostname and the ``host:*`` port-wildcard form so
+    that requests reaching the MCP server inside a container network — where
+    the Host header includes the internal port (e.g. ``llmwiki-mcp:8080``) —
+    are not rejected as 421 Misdirected Request. External requests routed
+    through a reverse proxy on ports 80/443 present a port-less Host header
+    and are matched by the bare entry, so this is backwards compatible.
+    """
+    host = urlparse(mcp_url).hostname or "localhost"
+    return [host, f"{host}:*"]
+
 
 mcp = FastMCP(
     "LLM Wiki",
@@ -49,7 +61,7 @@ mcp = FastMCP(
     ),
     transport_security=TransportSecuritySettings(
         enable_dns_rebinding_protection=True,
-        allowed_hosts=[_mcp_host],
+        allowed_hosts=_build_allowed_hosts(settings.MCP_URL),
     ),
 )
 
