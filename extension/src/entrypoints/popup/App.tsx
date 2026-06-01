@@ -117,6 +117,23 @@ export default function App() {
     }
   }
 
+  async function handlePasswordSignIn(email: string, password: string) {
+    setAuthError(null);
+    setAuth({ status: "loading" });
+    const result = await chrome.runtime.sendMessage({
+      type: "SIGN_IN_WITH_PASSWORD",
+      email,
+      password,
+    });
+    if (result.success) {
+      await checkSession();
+      showAuthNotice("Signed in to LLM Wiki");
+    } else {
+      setAuthError(result.error ?? "Sign in failed");
+      setAuth({ status: "signed_out" });
+    }
+  }
+
   async function handleSignOut() {
     setAuthError(null);
     setAuthNotice(null);
@@ -224,7 +241,10 @@ export default function App() {
               {authError}
             </div>
           )}
-          <AuthGate onSignIn={handleSignIn} />
+          <AuthGate
+            onSignIn={handleSignIn}
+            onPasswordSignIn={handlePasswordSignIn}
+          />
         </>
       )}
 

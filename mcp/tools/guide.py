@@ -177,6 +177,20 @@ Link between wiki pages using standard markdown links to other wiki paths.
 4. If the answer is valuable, file it as a new wiki page — explorations should compound
 5. Append a query entry to `/wiki/log.md`
 
+### Search the user's highlights and notes
+`search` finds passages the user has highlighted and comments they've written, not just source text. Results carry one of these tags so you can attribute the match correctly:
+- `[matched: note]` — the query matched only in the user's annotation (their note text or the quoted phrase they highlighted)
+- `[matched: source+note]` — the query matched in both the document body and the user's annotation
+- `[annotated]` — the match itself came from the source, but the chunk also has user notes attached (worth surfacing alongside the answer)
+- no tag — plain source match, no annotations on this chunk
+
+- `search(mode="search", query="solid tumor", annotated_only=true)` — only chunks the user has highlighted. Use this when answering "what have I already flagged about solid tumors?" — much higher signal than searching the full corpus.
+- `search(mode="search", query="contradicts", scope="annotations")` — only hits where the match came from the user's notes / highlighted text. Use this when you're trying to find the user's own commentary on a topic ("where did I say X contradicts Y?").
+- `search(mode="search", query="dose escalation", scope="source")` — exclude annotation-only matches; only return chunks where the document body itself contains the term. Useful when you want raw source claims without the user's interpretation mixed in.
+- `search(mode="search", query="vein-to-vein time")` — default `scope="all"`; matches either source or annotations. This is what you want 90% of the time.
+
+Treat `[matched: note]` hits as user opinion or curation, not source claims — they reflect what the user thought was important about a passage, not what the document asserts.
+
 ### Maintain the Wiki (Lint)
 Check for: contradictions, orphan pages, missing cross-references, stale claims, concepts mentioned but lacking their own page. Append a lint entry to `/wiki/log.md`.
 

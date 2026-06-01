@@ -448,6 +448,15 @@ class HostedDocumentService(DocumentService):
                     chunks = chunk_text(markdown)
                     if chunks:
                         await store_chunks(conn, str(row["id"]), self.user_id, str(kb_id), chunks)
+                        # Materialize the highlights we just persisted into
+                        # the freshly-created chunks. Without this, comments
+                        # on a clipped-with-highlights doc would not be
+                        # searchable until the user touched the highlight
+                        # again (next upsert/delete triggers materialization).
+                        if enriched:
+                            await self._recompute_chunks_for_doc(
+                                conn, str(row["id"]), [], enriched,
+                            )
         finally:
             await self.pool.release(conn)
 

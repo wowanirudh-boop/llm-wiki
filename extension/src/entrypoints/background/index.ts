@@ -5,6 +5,7 @@ import type { AuthChangeEvent, Session } from "@supabase/auth-js";
 
 type Message =
   | { type: "SIGN_IN_WITH_GOOGLE" }
+  | { type: "SIGN_IN_WITH_PASSWORD"; email: string; password: string }
   | { type: "SIGN_OUT" }
   | { type: "GET_SESSION" }
   | { type: "DOWNLOAD_PDF"; url: string }
@@ -43,6 +44,8 @@ export default defineBackground(() => {
     switch (msg.type) {
       case "SIGN_IN_WITH_GOOGLE":
         return signInWithGoogle();
+      case "SIGN_IN_WITH_PASSWORD":
+        return signInWithPassword(msg.email, msg.password);
       case "SIGN_OUT":
         return signOut();
       case "GET_SESSION":
@@ -180,6 +183,25 @@ export default defineBackground(() => {
       return { success: true };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Auth failed";
+      return { success: false, error: message };
+    }
+  }
+
+  async function signInWithPassword(
+    email: string,
+    password: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      return { success: true };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Sign in failed";
       return { success: false, error: message };
     }
   }

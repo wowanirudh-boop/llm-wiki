@@ -299,10 +299,6 @@ class LocalDocumentService(DocumentService):
             )
             asset_metadata.append(asset.metadata())
 
-        if highlights:
-            enriched = _merge_text_anchors(highlights, result.highlights)
-            await self.doc_repo.replace_highlights(parent_id, self.user_id, enriched)
-
         await self.doc_repo.set_metadata_field(parent_id, "source_url", url)
         await self.doc_repo.set_metadata_field(parent_id, "clip_kind", "web")
         if asset_metadata:
@@ -311,6 +307,14 @@ class LocalDocumentService(DocumentService):
         if markdown:
             chunks = chunk_text(markdown)
             await self.chunk_repo.store(parent_id, self.user_id, kb_id, chunks)
+
+        # replace_highlights AFTER chunks exist so the repo-level
+        # _recompute_chunks_for_doc can materialize annotations onto the
+        # freshly-created chunks. Running it before chunks exist would be a
+        # no-op materialization.
+        if highlights:
+            enriched = _merge_text_anchors(highlights, result.highlights)
+            await self.doc_repo.replace_highlights(parent_id, self.user_id, enriched)
 
         return await self.doc_repo.get(parent_id) or row
 

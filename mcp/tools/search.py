@@ -236,13 +236,17 @@ class SearchHandler:
         score = match.get("score", 0)
         score_str = f" [{score:.1f}]" if score else ""
 
+        # Mark which side of the chunk produced the match so the LLM can
+        # attribute correctly — "note" = user's voice, "source" = doc body.
+        # `[annotated]` is a weaker signal: the chunk has user notes but the
+        # match itself came only from the source.
         marker = ""
         if match.get("annotation_hit") and not match.get("source_hit"):
-            marker = " 🟡 your note"
+            marker = " [matched: note]"
         elif match.get("annotation_hit"):
-            marker = " 🟡 your note also matched"
+            marker = " [matched: source+note]"
         elif match.get("has_highlight"):
-            marker = " 🟡 annotated"
+            marker = " [annotated]"
 
         snippet = _extract_snippet(match.get("content", ""), query)
         return f"**{filepath}**{page_str}{score_str}{marker} — [view]({link}){breadcrumb}\n```\n{snippet}\n```\n"

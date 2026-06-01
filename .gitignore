@@ -54,3 +54,6 @@ supabase/.temp/
 
 # Local-only specs / scratch docs
 docs/
+
+# Local-only developer scripts (apply_migration.sh, one-shot utilities)
+scripts/
