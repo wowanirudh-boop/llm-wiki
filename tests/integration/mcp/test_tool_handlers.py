@@ -257,6 +257,270 @@ class TestWriteReadFlow:
         assert "not found" in result.lower()
 
 
+class TestLintTool:
+
+    async def test_lint_passes_clean_wiki_page(self, fs):
+        instance, kb_id = fs
+        from tools.write import WriteHandler
+        from tools.lint import LintHandler
+
+        kb = _make_kb(kb_id)
+        writer = WriteHandler(instance, kb)
+        linter = LintHandler(instance, kb)
+
+        await instance.create_document(kb_id, "source.pdf", "Source", "/", "pdf", "", ["source"])
+        await writer.create(
+            "/wiki/",
+            "Good Page",
+            (
+                "---\n"
+                "title: Good Page\n"
+                "description: A properly cited page.\n"
+                "date: 2026-05-31\n"
+                "tags: [alpha, beta]\n"
+                "---\n\n"
+                "A sourced claim.[^1]\n\n"
+                "[^1]: source.pdf, p.1"
+            ),
+            [],
+            "",
+            False,
+        )
+
+        result = await linter.run(path="/wiki/good-page.md")
+        assert "Lint passed" in result
+
+    async def test_lint_reports_missing_frontmatter(self, fs):
+        instance, kb_id = fs
+        from tools.lint import LintHandler
+
+        kb = _make_kb(kb_id)
+        linter = LintHandler(instance, kb)
+
+        await instance.create_document(kb_id, "bad.md", "Bad", "/wiki/", "md", "No frontmatter", ["tag"])
+
+        result = await linter.run(path="/wiki/bad.md", include_graph=False)
+        assert "missing-frontmatter" in result
+
+    async def test_lint_reports_metadata_mismatch(self, fs):
+        instance, kb_id = fs
+        from tools.lint import LintHandler
+
+        kb = _make_kb(kb_id)
+        linter = LintHandler(instance, kb)
+
+        await instance.create_document(
+            kb_id,
+            "mismatch.md",
+            "Mismatch",
+            "/wiki/",
+            "md",
+            (
+                "---\n"
+                "title: Mismatch\n"
+                "description: Metadata mismatch.\n"
+                "date: 2026-05-31\n"
+                "tags: [frontmatter, canonical]\n"
+                "---\n\n"
+                "Body"
+            ),
+            ["indexed-only"],
+            date="2026-01-01",
+        )
+
+        result = await linter.run(path="/wiki/mismatch.md", include_graph=False)
+        assert "tag-index-mismatch" in result
+        assert "date-index-mismatch" in result
+
+    async def test_lint_reports_footnote_hygiene(self, fs):
+        instance, kb_id = fs
+        from tools.lint import LintHandler
+
+        kb = _make_kb(kb_id)
+        linter = LintHandler(instance, kb)
+
+        await instance.create_document(
+            kb_id,
+            "footnotes.md",
+            "Footnotes",
+            "/wiki/",
+            "md",
+            (
+                "---\n"
+                "title: Footnotes\n"
+                "description: Broken footnotes.\n"
+                "date: 2026-05-31\n"
+                "tags: [alpha, beta]\n"
+                "---\n\n"
+                "Claim one.[^1]\n"
+                "Claim two.[^1]\n"
+                "Missing definition.[^2]\n\n"
+                "[^1]: source.pdf, p.1\n"
+                "[^1]: other.pdf, p.2\n\n"
+                "## More body"
+            ),
+            ["alpha", "beta"],
+        )
+
+        result = await linter.run(path="/wiki/footnotes.md", include_graph=False)
+        assert "duplicate-footnote" in result
+        assert "footnote-without-definition" in result
+        assert "footnotes-not-at-tail" in result
+
+    async def test_lint_reports_dangling_link_and_unresolved_citation(self, fs):
+        instance, kb_id = fs
+        from tools.lint import LintHandler
+
+        kb = _make_kb(kb_id)
+        linter = LintHandler(instance, kb)
+
+        await instance.create_document(
+            kb_id,
+            "broken-links.md",
+            "Broken Links",
+            "/wiki/",
+            "md",
+            (
+                "---\n"
+                "title: Broken Links\n"
+                "description: Broken references.\n"
+                "date: 2026-05-31\n"
+                "tags: [alpha, beta]\n"
+                "---\n\n"
+                "See [Missing](missing.md). Claim.[^1]\n\n"
+                "[^1]: missing.pdf, p.1"
+            ),
+            ["alpha", "beta"],
+        )
+
+        result = await linter.run(path="/wiki/broken-links.md", include_graph=False)
+        assert "dangling-link" in result
+        assert "unresolved-citation" in result
+
+    async def test_lint_reports_citation_graph_mismatch(self, fs):
+        instance, kb_id = fs
+        from tools.lint import LintHandler
+
+        kb = _make_kb(kb_id)
+        linter = LintHandler(instance, kb)
+
+        await instance.create_document(kb_id, "source.pdf", "Source", "/", "pdf", "", ["source"])
+        await instance.create_document(
+            kb_id,
+            "unsynced.md",
+            "Unsynced",
+            "/wiki/",
+            "md",
+            (
+                "---\n"
+                "title: Unsynced\n"
+                "description: Citation graph was not synced.\n"
+                "date: 2026-05-31\n"
+                "tags: [alpha, beta]\n"
+                "---\n\n"
+                "Claim.[^1]\n\n"
+                "[^1]: source.pdf, p.1"
+            ),
+            ["alpha", "beta"],
+            date="2026-05-31",
+        )
+
+        result = await linter.run(path="/wiki/unsynced.md")
+        assert "citation-graph-mismatch" in result
+
+    async def test_lint_glob_path_narrows_to_subtree(self, fs):
+        instance, kb_id = fs
+        from tools.lint import LintHandler
+
+        kb = _make_kb(kb_id)
+        linter = LintHandler(instance, kb)
+
+        await instance.create_document(kb_id, "top.md", "Top", "/wiki/", "md", "no frontmatter", ["tag"])
+        await instance.create_document(kb_id, "nested.md", "Nested", "/wiki/concepts/", "md", "no frontmatter", ["tag"])
+
+        result = await linter.run(path="/wiki/concepts/*.md", include_graph=False)
+        assert "/wiki/concepts/nested.md" in result
+        assert "/wiki/top.md" not in result
+
+    async def test_lint_scope_sources_skips_wiki_pages(self, fs):
+        instance, kb_id = fs
+        from tools.lint import LintHandler
+
+        kb = _make_kb(kb_id)
+        linter = LintHandler(instance, kb)
+
+        await instance.create_document(kb_id, "source.pdf", "Source", "/", "pdf", "", ["source"])
+        await instance.create_document(kb_id, "broken.md", "Broken", "/wiki/", "md", "no frontmatter", ["tag"])
+
+        result = await linter.run(scope="sources", include_graph=False)
+        assert "missing-frontmatter" not in result
+        assert "Lint passed" in result
+
+    async def test_lint_include_graph_false_skips_graph_checks(self, fs):
+        instance, kb_id = fs
+        from tools.lint import LintHandler
+
+        kb = _make_kb(kb_id)
+        linter = LintHandler(instance, kb)
+
+        # Uncited source + a stale page would surface under graph checks; with
+        # include_graph=False neither should appear.
+        await instance.create_document(kb_id, "uncited.pdf", "Uncited", "/", "pdf", "", ["source"])
+        await instance.create_document(
+            kb_id,
+            "lonely.md",
+            "Lonely",
+            "/wiki/",
+            "md",
+            (
+                "---\n"
+                "title: Lonely\n"
+                "description: A page with no backlinks.\n"
+                "date: 2026-05-31\n"
+                "tags: [alpha, beta]\n"
+                "---\n\n"
+                "Body"
+            ),
+            ["alpha", "beta"],
+            date="2026-05-31",
+        )
+
+        result = await linter.run(include_graph=False)
+        assert "uncited-source" not in result
+        assert "orphan-page" not in result
+
+    async def test_lint_reports_orphan_page(self, fs):
+        instance, kb_id = fs
+        from tools.lint import LintHandler
+
+        kb = _make_kb(kb_id)
+        linter = LintHandler(instance, kb)
+
+        # Two non-root wiki pages, neither linked to. The one we lint is an orphan.
+        await instance.create_document(kb_id, "other.md", "Other", "/wiki/", "md", "Other body", ["alpha", "beta"])
+        await instance.create_document(
+            kb_id,
+            "orphan.md",
+            "Orphan",
+            "/wiki/",
+            "md",
+            (
+                "---\n"
+                "title: Orphan\n"
+                "description: No incoming links.\n"
+                "date: 2026-05-31\n"
+                "tags: [alpha, beta]\n"
+                "---\n\n"
+                "Body"
+            ),
+            ["alpha", "beta"],
+            date="2026-05-31",
+        )
+
+        result = await linter.run(path="/wiki/orphan.md")
+        assert "orphan-page" in result
+
+
 class TestReadModes:
 
     async def test_read_falls_back_to_title(self, fs):

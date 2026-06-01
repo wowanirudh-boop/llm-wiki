@@ -52,7 +52,7 @@ class PostgresVaultFS(VaultFS):
         return await scoped_queryrow(
             self.user_id,
             "SELECT id, user_id, filename, title, path, content, tags, version, file_type, "
-            "page_count, highlights, metadata, created_at, updated_at "
+            "page_count, highlights, metadata, date, created_at, updated_at "
             "FROM documents WHERE knowledge_base_id = $1 AND filename = $2 AND path = $3 AND NOT archived AND user_id = $4",
             kb_id, filename, dir_path, self.user_id,
         )
@@ -61,7 +61,7 @@ class PostgresVaultFS(VaultFS):
         return await scoped_queryrow(
             self.user_id,
             "SELECT id, user_id, filename, title, path, content, tags, version, file_type, "
-            "page_count, highlights, metadata, created_at, updated_at "
+            "page_count, highlights, metadata, date, created_at, updated_at "
             "FROM documents WHERE knowledge_base_id = $1 AND (filename = $2 OR title = $2) AND NOT archived AND user_id = $3",
             kb_id, name, self.user_id,
         )
@@ -144,7 +144,7 @@ class PostgresVaultFS(VaultFS):
     async def list_documents(self, kb_id: str) -> list[dict]:
         return await scoped_query(
             self.user_id,
-            "SELECT id, filename, title, path, file_type, tags, page_count, updated_at "
+            "SELECT id, filename, title, path, file_type, tags, page_count, date, updated_at "
             "FROM documents WHERE knowledge_base_id = $1 AND NOT archived AND user_id = $2 "
             "AND COALESCE(metadata->>'asset', 'false') <> 'true' "
             "ORDER BY path, filename",
@@ -154,7 +154,7 @@ class PostgresVaultFS(VaultFS):
     async def list_documents_with_content(self, kb_id: str) -> list[dict]:
         return await scoped_query(
             self.user_id,
-            "SELECT id, filename, title, path, content, tags, file_type, page_count, highlights, metadata "
+            "SELECT id, filename, title, path, content, tags, file_type, page_count, highlights, metadata, date "
             "FROM documents WHERE knowledge_base_id = $1 AND NOT archived AND user_id = $2 "
             "AND COALESCE(metadata->>'asset', 'false') <> 'true' "
             "ORDER BY path, filename",
@@ -319,7 +319,7 @@ class PostgresVaultFS(VaultFS):
     async def get_forward_references(self, doc_id: str) -> list[dict]:
         return await scoped_query(
             self.user_id,
-            "SELECT d.filename, d.title, d.path, dr.reference_type, dr.page "
+            "SELECT d.id, d.filename, d.title, d.path, dr.reference_type, dr.page "
             "FROM document_references dr "
             "JOIN documents d ON dr.target_document_id = d.id "
             "WHERE dr.source_document_id = $1 AND NOT d.archived AND d.user_id = $2 "

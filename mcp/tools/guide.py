@@ -192,7 +192,10 @@ Link between wiki pages using standard markdown links to other wiki paths.
 Treat `[matched: note]` hits as user opinion or curation, not source claims — they reflect what the user thought was important about a passage, not what the document asserts.
 
 ### Maintain the Wiki (Lint)
-Check for: contradictions, orphan pages, missing cross-references, stale claims, concepts mentioned but lacking their own page. Append a lint entry to `/wiki/log.md`.
+1. Run `lint(knowledge_base="...", path="*")` for deterministic hygiene checks: required frontmatter, tag/date index consistency, footnote hygiene, citation resolution, citation graph edges, dangling wiki links, orphan pages, uncited sources, and stale pages.
+2. Fix all `error` findings before relying on the wiki. Treat `warn` findings as maintenance debt unless there is a deliberate reason.
+3. Then do semantic review manually: contradictions, missing concept pages, outdated claims relative to newer sources, and weak synthesis.
+4. Append a lint entry to `/wiki/log.md`.
 
 ## Reference Graph
 

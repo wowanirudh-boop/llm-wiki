@@ -109,7 +109,7 @@ class SqliteVaultFS(VaultFS):
         db = self._db_or_raise()
         cursor = await db.execute(
             "SELECT id, user_id, filename, title, path, content, tags, version, "
-            "file_type, page_count, highlights, metadata, created_at, updated_at "
+            "file_type, page_count, highlights, metadata, date, created_at, updated_at "
             "FROM documents WHERE filename = ? AND path = ? AND status != 'failed'",
             (filename, dir_path),
         )
@@ -121,7 +121,7 @@ class SqliteVaultFS(VaultFS):
         name_lower = name.lower()
         cursor = await db.execute(
             "SELECT id, user_id, filename, title, path, content, tags, version, "
-            "file_type, page_count, highlights, metadata, created_at, updated_at "
+            "file_type, page_count, highlights, metadata, date, created_at, updated_at "
             "FROM documents WHERE (lower(filename) = ? OR lower(title) = ?) AND status != 'failed'",
             (name_lower, name_lower),
         )
@@ -209,7 +209,7 @@ class SqliteVaultFS(VaultFS):
     async def list_documents(self, kb_id: str) -> list[dict]:
         db = self._db_or_raise()
         cursor = await db.execute(
-            "SELECT id, filename, title, path, file_type, tags, page_count, updated_at "
+            "SELECT id, filename, title, path, file_type, tags, page_count, date, updated_at "
             "FROM documents WHERE status != 'failed' "
             "AND COALESCE(json_extract(metadata, '$.asset'), 0) != 1 "
             "ORDER BY path, filename",
@@ -219,7 +219,7 @@ class SqliteVaultFS(VaultFS):
     async def list_documents_with_content(self, kb_id: str) -> list[dict]:
         db = self._db_or_raise()
         cursor = await db.execute(
-            "SELECT id, filename, title, path, content, tags, file_type, page_count, highlights, metadata "
+            "SELECT id, filename, title, path, content, tags, file_type, page_count, highlights, metadata, date "
             "FROM documents WHERE status != 'failed' "
             "AND COALESCE(json_extract(metadata, '$.asset'), 0) != 1 "
             "ORDER BY path, filename",
@@ -404,7 +404,7 @@ class SqliteVaultFS(VaultFS):
     async def get_forward_references(self, doc_id: str) -> list[dict]:
         db = self._db_or_raise()
         cursor = await db.execute(
-            "SELECT d.filename, d.title, d.path, dr.reference_type, dr.page "
+            "SELECT d.id, d.filename, d.title, d.path, dr.reference_type, dr.page "
             "FROM document_references dr "
             "JOIN documents d ON dr.target_document_id = d.id "
             "WHERE dr.source_document_id = ? AND d.status != 'failed' "
