@@ -227,27 +227,31 @@ class HostedKBService(KBService):
         return dict(row) if row else None
 
     async def delete(self, kb_id: str) -> bool:
-        # Deleting the KB cascades its documents in Postgres, but the S3 objects
-        # for each document must be purged explicitly first.
-        await self._purge_kb_s3(kb_id)
+        doc_ids = await self._kb_document_ids(kb_id)
         result = await self.pool.execute(
             "DELETE FROM knowledge_bases WHERE id = $1 AND user_id = $2",
             kb_id, self.user_id,
         )
-        return result != "DELETE 0"
+        if result == "DELETE 0":
+            return False
+        await self._purge_document_prefixes(doc_ids)
+        return True
 
-    async def _purge_kb_s3(self, kb_id: str) -> None:
-        if not self.s3:
-            return
+    async def _kb_document_ids(self, kb_id: str) -> list[str]:
         rows = await self.pool.fetch(
             "SELECT id::text FROM documents WHERE knowledge_base_id = $1 AND user_id = $2",
             kb_id, self.user_id,
         )
-        for row in rows:
+        return [row["id"] for row in rows]
+
+    async def _purge_document_prefixes(self, doc_ids: list[str]) -> None:
+        if not self.s3:
+            return
+        for doc_id in doc_ids:
             try:
-                await self.s3.delete_prefix(f"{self.user_id}/{row['id']}/")
+                await self.s3.delete_prefix(f"{self.user_id}/{doc_id}/")
             except Exception:
-                logger.exception("S3 purge failed for document %s", row["id"])
+                logger.exception("S3 purge failed for document %s", doc_id)
 
     async def _unique_slug(self, name: str) -> str:
         base = _slugify(name)
@@ -1073,12 +1077,14 @@ class HostedDocumentService(DocumentService):
         if not source_ids:
             return 0
         doc_ids = source_ids + await self._child_asset_ids(source_ids)
-        await self._purge_s3(doc_ids)
         result = await self.pool.execute(
             "DELETE FROM documents WHERE id = ANY($1::uuid[]) AND user_id = $2",
             doc_ids, self.user_id,
         )
-        return int(result.split()[-1]) if result else 0
+        deleted = int(result.split()[-1]) if result else 0
+        if deleted:
+            await self._purge_s3(doc_ids)
+        return deleted
 
     async def _child_asset_ids(self, parent_ids: list[str]) -> list[str]:
         rows = await self.pool.fetch(

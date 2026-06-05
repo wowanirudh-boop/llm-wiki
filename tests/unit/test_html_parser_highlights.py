@@ -281,7 +281,7 @@ async def test_webclip_asset_materialization_drops_remote_images_when_fetch_fail
 
 
 @pytest.mark.parametrize("ip", ["127.0.0.1", "169.254.169.254", "10.0.0.5", "192.168.1.1", "::1"])
-def test_is_public_host_rejects_internal_addresses(monkeypatch, ip):
+def test_resolve_public_ip_rejects_internal_addresses(monkeypatch, ip):
     from services import webclip_assets
 
     def fake_getaddrinfo(host, *args, **kwargs):
@@ -289,17 +289,45 @@ def test_is_public_host_rejects_internal_addresses(monkeypatch, ip):
         return [(family, socket.SOCK_STREAM, 6, "", (ip, 0))]
 
     monkeypatch.setattr(webclip_assets.socket, "getaddrinfo", fake_getaddrinfo)
-    assert webclip_assets._is_public_host("evil.example") is False
+    assert webclip_assets._resolve_public_ip("evil.example") is None
 
 
-def test_is_public_host_allows_public_address(monkeypatch):
+def test_resolve_public_ip_allows_public_address(monkeypatch):
     from services import webclip_assets
 
     def fake_getaddrinfo(host, *args, **kwargs):
         return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 0))]
 
     monkeypatch.setattr(webclip_assets.socket, "getaddrinfo", fake_getaddrinfo)
-    assert webclip_assets._is_public_host("example.com") is True
+    assert webclip_assets._resolve_public_ip("example.com") == "93.184.216.34"
+
+
+def test_resolve_public_ip_rejects_when_any_resolved_address_is_internal(monkeypatch):
+    from services import webclip_assets
+
+    def fake_getaddrinfo(host, *args, **kwargs):
+        return [
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 0)),
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("169.254.169.254", 0)),
+        ]
+
+    monkeypatch.setattr(webclip_assets.socket, "getaddrinfo", fake_getaddrinfo)
+    assert webclip_assets._resolve_public_ip("rebind.example") is None
+
+
+@pytest.mark.asyncio
+async def test_build_pinned_request_targets_ip_but_keeps_host_and_sni():
+    from urllib.parse import urlparse
+
+    from services import webclip_assets
+
+    async with webclip_assets.httpx.AsyncClient() as client:
+        parsed = urlparse("https://cdn.example/hero.png")
+        request = webclip_assets._build_pinned_request(client, parsed, "93.184.216.34")
+
+    assert request.url.host == "93.184.216.34"
+    assert request.headers["host"] == "cdn.example"
+    assert request.extensions.get("sni_hostname") == "cdn.example"
 
 
 @pytest.mark.asyncio
@@ -311,10 +339,10 @@ async def test_fetch_remote_image_blocks_metadata_endpoint(monkeypatch):
 
     monkeypatch.setattr(webclip_assets.socket, "getaddrinfo", fake_getaddrinfo)
 
-    def fail_stream(*args, **kwargs):
+    async def fail_send(*args, **kwargs):
         raise AssertionError("must not issue HTTP to a blocked host")
 
-    monkeypatch.setattr(webclip_assets.httpx.AsyncClient, "stream", fail_stream)
+    monkeypatch.setattr(webclip_assets.httpx.AsyncClient, "send", fail_send)
 
     result = await webclip_assets._fetch_remote_image("http://169.254.169.254/latest/meta-data/")
     assert result is None

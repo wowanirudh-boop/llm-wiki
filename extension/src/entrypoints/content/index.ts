@@ -415,6 +415,7 @@ class HighlightController {
       this.knowledgeBaseId = doc.knowledge_base_id;
       this.version = doc.version;
       this.highlights = mergeHighlightsById(doc.highlights ?? [], this.highlights);
+      this.dropDeletedHighlights();
       // Defer apply slightly so SPA hydration settles
       window.requestAnimationFrame(() => applyHighlights(this.highlights));
       if (this.highlights.length || this.deletedHighlightIds.size) this.scheduleSave();
@@ -733,6 +734,11 @@ class HighlightController {
     this.highlights = Array.from(localById.values());
   }
 
+  private dropDeletedHighlights() {
+    if (!this.deletedHighlightIds.size) return;
+    this.highlights = this.highlights.filter((h) => !this.deletedHighlightIds.has(h.id));
+  }
+
   private pendingStorageKey(): string {
     return `${PENDING_PAGE_PREFIX}${canonicalizeUrl(location.href)}`;
   }
@@ -750,6 +756,7 @@ class HighlightController {
       this.folderPath = pending.folderPath || this.folderPath;
       this.highlights = mergeHighlightsById(this.highlights, pending.highlights ?? []);
       this.deletedHighlightIds = new Set(pending.deletedHighlightIds ?? []);
+      this.dropDeletedHighlights();
       this.restoredPendingState = true;
 
       if (this.highlights.length) {
@@ -1054,6 +1061,7 @@ class HighlightController {
         return;
       }
 
+      this.dropDeletedHighlights();
       for (const id of Array.from(this.deletedHighlightIds)) {
         const result = await deleteHighlight(
           this.apiUrl,
@@ -1092,6 +1100,7 @@ class HighlightController {
             if (!ids.has(h.id)) merged.push(h);
           }
           this.highlights = merged;
+          this.dropDeletedHighlights();
           this.version = fresh.version;
           this.isSaving = false;
           this.scheduleSave();
