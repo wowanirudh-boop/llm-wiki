@@ -10,8 +10,6 @@ Key design rules:
 """
 
 import asyncio
-import hashlib
-import json
 import logging
 import os
 import time
@@ -20,16 +18,23 @@ from pathlib import Path
 
 import aiosqlite
 
+from domain.local_index import (
+    extension_for,
+    folder_path_for,
+    hash_file,
+    legacy_relative_path_for,
+    read_text_content,
+    relative_path_for,
+    source_kind_for,
+    status_for_content,
+    title_for,
+)
+
 logger = logging.getLogger(__name__)
 
 IGNORE_DIRS = frozenset({
     ".llmwiki", ".git", "node_modules", "__pycache__", ".venv", "venv",
     ".idea", ".vscode", ".DS_Store",
-})
-
-TEXT_EXTENSIONS = frozenset({
-    "md", "txt", "csv", "html", "svg", "json", "xml", "yaml", "yml",
-    "toml", "ini", "cfg", "rst", "tex", "latex",
 })
 
 COOLDOWN_SECONDS = 2.0
@@ -96,7 +101,7 @@ def _should_ignore(path: Path, workspace: Path) -> bool:
     except ValueError:
         return True
 
-    relative_str = str(relative)
+    relative_str = relative.as_posix()
     parts = relative.parts
 
     # Built-in ignores
@@ -112,72 +117,87 @@ def _should_ignore(path: Path, workspace: Path) -> bool:
     return False
 
 
-def _get_source_kind(relative_path: str) -> str:
-    if relative_path.startswith("wiki/"):
-        return "wiki"
-    return "source"
+async def _schedule_processing(
+    db: aiosqlite.Connection,
+    doc_id: str,
+    workspace: Path,
+    schedule_processing: bool,
+) -> None:
+    if not schedule_processing:
+        return
+    from domain.local_processor import process_document as _process
+    asyncio.create_task(_process(db, doc_id, workspace))
 
 
-async def _index_file(db: aiosqlite.Connection, workspace: Path, file_path: Path) -> None:
+async def _clear_extracted_rows(db: aiosqlite.Connection, doc_id: str) -> None:
+    await db.execute("DELETE FROM document_pages WHERE document_id = ?", (doc_id,))
+    await db.execute("DELETE FROM document_chunks WHERE document_id = ?", (doc_id,))
+
+
+async def _index_file(
+    db: aiosqlite.Connection,
+    workspace: Path,
+    file_path: Path,
+    *,
+    schedule_processing: bool = True,
+) -> None:
     """Index or re-index a single file."""
-    relative = str(file_path.relative_to(workspace))
+    relative = relative_path_for(workspace, file_path)
+    legacy_relative = legacy_relative_path_for(workspace, file_path)
     filename = file_path.name
-    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-
-    parts = relative.split("/")
-    if len(parts) > 1:
-        dir_path = "/" + "/".join(parts[:-1]) + "/"
-    else:
-        dir_path = "/"
-
-    source_kind = _get_source_kind(relative)
+    ext = extension_for(filename)
+    dir_path = folder_path_for(relative)
+    source_kind = source_kind_for(relative)
     stat = file_path.stat()
-
-    # Derive title
-    stem = filename.rsplit(".", 1)[0] if "." in filename else filename
-    title = stem.replace("-", " ").replace("_", " ").strip().title()
+    title = title_for(filename)
 
     # Read content for text files
-    content = None
-    if ext in TEXT_EXTENSIONS:
-        try:
-            content = file_path.read_text(encoding="utf-8", errors="replace")
-        except Exception:
-            pass
-
-    content_hash = None
-    if stat.st_size < 100_000_000:
-        try:
-            content_hash = hashlib.sha256(file_path.read_bytes()).hexdigest()
-        except Exception:
-            pass
+    content = read_text_content(file_path, ext)
+    content_hash = hash_file(file_path)
+    status = status_for_content(content)
 
     # Check if document already exists at this path
-    cursor = await db.execute(
-        "SELECT id, content_hash FROM documents WHERE relative_path = ?",
-        (relative,),
-    )
+    if legacy_relative != relative:
+        cursor = await db.execute(
+            "SELECT id, content_hash, status, relative_path, path FROM documents "
+            "WHERE relative_path IN (?, ?)",
+            (relative, legacy_relative),
+        )
+    else:
+        cursor = await db.execute(
+            "SELECT id, content_hash, status, relative_path, path "
+            "FROM documents WHERE relative_path = ?",
+            (relative,),
+        )
     existing = await cursor.fetchone()
 
     if existing:
-        doc_id, old_hash = existing
-        if old_hash == content_hash:
+        doc_id, old_hash, old_status, old_relative, old_path = existing
+        metadata_current = old_relative == relative and old_path == dir_path
+        if old_hash == content_hash and old_status == status and metadata_current:
             return  # No change
+        if status == "pending":
+            await _clear_extracted_rows(db, doc_id)
         # Update existing
         await db.execute(
-            "UPDATE documents SET content = ?, file_size = ?, content_hash = ?, "
-            "mtime_ns = ?, last_indexed_at = datetime('now'), "
+            "UPDATE documents SET filename = ?, title = ?, path = ?, relative_path = ?, "
+            "source_kind = ?, file_type = ?, content = ?, file_size = ?, status = ?, "
+            "content_hash = ?, mtime_ns = ?, last_indexed_at = datetime('now'), "
+            "page_count = CASE WHEN ? = 'pending' THEN NULL ELSE page_count END, "
+            "parser = CASE WHEN ? = 'pending' THEN NULL ELSE parser END, "
+            "error_message = NULL, "
             "updated_at = datetime('now'), version = version + 1 "
             "WHERE id = ?",
-            (content, stat.st_size, content_hash, int(stat.st_mtime_ns), doc_id),
+            (
+                filename, title, dir_path, relative, source_kind, ext or "bin",
+                content, stat.st_size, status, content_hash, int(stat.st_mtime_ns),
+                status, status, doc_id,
+            ),
         )
         await db.commit()
         logger.info("Re-indexed (modified): %s", relative)
-        # Re-process non-text files
-        if ext not in TEXT_EXTENSIONS and ext:
-            from domain.local_processor import process_document as _process
-            import asyncio
-            asyncio.create_task(_process(db, doc_id, workspace))
+        if status == "pending":
+            await _schedule_processing(db, doc_id, workspace, schedule_processing)
         return
     else:
         # Create new
@@ -188,7 +208,6 @@ async def _index_file(db: aiosqlite.Connection, workspace: Path, file_path: Path
         row = await cursor.fetchone()
         doc_number = row[0]
 
-        status = "ready" if content is not None else "pending"
         await db.execute(
             "INSERT INTO documents (id, user_id, filename, title, path, relative_path, "
             "source_kind, file_type, file_size, status, content, tags, version, "
@@ -200,19 +219,16 @@ async def _index_file(db: aiosqlite.Connection, workspace: Path, file_path: Path
              int(stat.st_mtime_ns), doc_number),
         )
         logger.info("Indexed (new): %s", relative)
-        # Process non-text files (PDFs, spreadsheets, images, HTML)
-        if status == "pending":
-            from domain.local_processor import process_document as _process
-            import asyncio
-            asyncio.create_task(_process(db, doc_id, workspace))
 
     await db.commit()
+    if status == "pending":
+        await _schedule_processing(db, doc_id, workspace, schedule_processing)
 
 
 async def _remove_file(db: aiosqlite.Connection, workspace: Path, file_path: Path) -> None:
     """Remove a file from the index."""
     try:
-        relative = str(file_path.relative_to(workspace))
+        relative = relative_path_for(workspace, file_path)
     except ValueError:
         return
 
@@ -222,6 +238,34 @@ async def _remove_file(db: aiosqlite.Connection, workspace: Path, file_path: Pat
     if cursor.rowcount > 0:
         await db.commit()
         logger.info("Removed from index: %s", relative)
+
+
+async def scan_workspace(
+    db: aiosqlite.Connection,
+    workspace: Path,
+    *,
+    schedule_processing: bool = True,
+) -> int:
+    """Index existing files under the workspace once."""
+    indexed = 0
+    for root_path, dirs, files in os.walk(workspace):
+        root = Path(root_path)
+        dirs[:] = [
+            d for d in dirs
+            if not _should_ignore(root / d, workspace)
+        ]
+        for filename in files:
+            file_path = root / filename
+            if _should_ignore(file_path, workspace) or not file_path.is_file():
+                continue
+            await _index_file(
+                db,
+                workspace,
+                file_path,
+                schedule_processing=schedule_processing,
+            )
+            indexed += 1
+    return indexed
 
 
 async def watch_workspace(db: aiosqlite.Connection, workspace: Path) -> None:

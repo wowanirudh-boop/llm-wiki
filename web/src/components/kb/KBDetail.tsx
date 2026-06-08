@@ -617,6 +617,36 @@ export function KBDetail({ kbId, kbSlug, kbName, viewMode, routeFilesPath }: Pro
     })
   }, [kbId, kbSlug, addUpload, setUploadProgress, markUploadProcessing, markUploadFailed])
 
+  const upsertUploadedDocument = React.useCallback((data: DocumentListItem) => {
+    setDocuments((prev) => [data, ...prev.filter((d) => d.id !== data.id)])
+  }, [setDocuments])
+
+  const uploadLocalFile = React.useCallback(async (file: File, targetPath: string = '/'): Promise<DocumentListItem> => {
+    const send = async (onConflict: 'error' | 'replace'): Promise<DocumentListItem> => {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('path', targetPath)
+      if (onConflict === 'replace') formData.append('on_conflict', 'replace')
+
+      const res = await fetch(`${API_URL}/v1/upload`, { method: 'POST', body: formData })
+      if (res.status === 409) {
+        const body = await res.json().catch(() => ({}))
+        if (body?.detail?.code === 'duplicate_path') {
+          const shouldReplace = window.confirm(`${file.name} already exists in ${targetPath}. Replace it?`)
+          if (!shouldReplace) throw new Error('Upload canceled')
+          return send('replace')
+        }
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        const message = typeof body?.detail === 'string' ? body.detail : `Upload failed: ${res.status}`
+        throw new Error(message)
+      }
+      return res.json()
+    }
+    return send('error')
+  }, [])
+
   const uploadFiles = React.useCallback((files: File[], targetPath: string = '/') => {
     const t = getToken()
     if (!t || !userId) return
@@ -627,12 +657,15 @@ export function KBDetail({ kbId, kbSlug, kbName, viewMode, routeFilesPath }: Pro
         .filter((d) => d.path === targetPath && !d.archived)
         .map((d) => d.filename.toLowerCase()),
     )
-    const duplicates = files.filter((f) => existingNames.has(f.name.toLowerCase()))
+    const duplicates = files.filter((f) => {
+      if (!existingNames.has(f.name.toLowerCase())) return false
+      return process.env.NEXT_PUBLIC_MODE !== 'local' || /\.(md|txt)$/i.test(f.name)
+    })
     if (duplicates.length > 0) {
       const names = duplicates.map((f) => f.name).join(', ')
       toast.error(`Already exists: ${names}`)
       if (duplicates.length === files.length) return
-      files = files.filter((f) => !existingNames.has(f.name.toLowerCase()))
+      files = files.filter((f) => !duplicates.includes(f))
     }
 
     const uploads = files.map(async (file) => {
@@ -645,7 +678,7 @@ export function KBDetail({ kbId, kbSlug, kbName, viewMode, routeFilesPath }: Pro
             method: 'POST',
             body: JSON.stringify({ filename: file.name, title, content, path: targetPath }),
           })
-          setDocuments((prev) => [data, ...prev])
+          upsertUploadedDocument(data)
         } catch { toast.error(`Failed to import ${file.name}`) }
       } else {
         const supportedTypes = new Set(['pdf', 'pptx', 'ppt', 'docx', 'doc', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'xlsx', 'xls', 'csv', 'html', 'htm'])
@@ -653,16 +686,13 @@ export function KBDetail({ kbId, kbSlug, kbName, viewMode, routeFilesPath }: Pro
           if (process.env.NEXT_PUBLIC_MODE === 'local') {
             const uploadId = crypto.randomUUID()
             addUpload({ id: uploadId, filename: file.name, kbId, kbSlug, path: targetPath })
-            const formData = new FormData()
-            formData.append('file', file)
-            formData.append('path', targetPath)
             try {
-              const res = await fetch(`${API_URL}/v1/upload`, { method: 'POST', body: formData })
-              if (!res.ok) throw new Error(`Upload failed: ${res.status}`)
-              const data = await res.json()
-              setDocuments((prev) => [data, ...prev])
+              const data = await uploadLocalFile(file, targetPath)
+              upsertUploadedDocument(data)
               markUploadProcessing(uploadId)
-            } catch { markUploadFailed(uploadId) }
+            } catch (err) {
+              markUploadFailed(uploadId, err instanceof Error ? err.message : null)
+            }
           } else {
             await tusUploadFile(file, targetPath)
           }
@@ -680,7 +710,7 @@ export function KBDetail({ kbId, kbSlug, kbName, viewMode, routeFilesPath }: Pro
         navigateToView('files')
       }
     })
-  }, [kbId, kbSlug, userId, tusUploadFile, documents, sourceDocs.length, navigateToView, addUpload, markUploadProcessing, markUploadFailed])
+  }, [kbId, kbSlug, userId, tusUploadFile, uploadLocalFile, documents, sourceDocs.length, navigateToView, addUpload, markUploadProcessing, markUploadFailed, upsertUploadedDocument])
 
   React.useEffect(() => {
     reconcileUploads(kbId, documents)

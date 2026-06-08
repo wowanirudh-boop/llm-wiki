@@ -154,13 +154,24 @@ async def _local_lifespan_inner(app: FastAPI):
 @asynccontextmanager
 async def _local_lifespan(app: FastAPI):
     db = await _local_lifespan_inner(app)
+    from pathlib import Path
+    from domain.local_processor import process_document
+    from domain.watcher import scan_workspace
+
+    workspace = Path(app.state.workspace_path)
+    await scan_workspace(db, workspace, schedule_processing=False)
+
+    cursor = await db.execute(
+        "SELECT id FROM documents WHERE status IN ('pending', 'processing')",
+    )
+    for row in await cursor.fetchall():
+        logger.info("Recovering local pending document %s", row[0][:8])
+        asyncio.create_task(process_document(db, row[0], workspace))
 
     # Start file watcher
     watcher_task = None
     try:
         from domain.watcher import watch_workspace
-        from pathlib import Path
-        workspace = Path(app.state.workspace_path)
         watcher_task = asyncio.create_task(watch_workspace(db, workspace))
         logger.info("File watcher started")
     except ImportError:
