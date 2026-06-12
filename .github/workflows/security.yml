@@ -10,6 +10,7 @@ on:
     - cron: "0 6 * * *"
 
 permissions:
+  actions: read        # required by upload-sarif to read workflow run metadata
   contents: read
   security-events: write   # required for uploading SARIF to GitHub Security tab
   pull-requests: write     # required for dependency-review-action PR comments
