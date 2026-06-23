@@ -23,25 +23,25 @@
     "@types/react-dom": "19.2.3",
     "@wxt-dev/module-react": "1.1.5",
     "autoprefixer": "10.4.24",
-    "happy-dom": "20.9.0",
+    "happy-dom": "20.10.6",
     "postcss": "8.5.10",
     "tailwindcss": "4.1.18",
     "typescript": "5.9.3",
-    "vitest": "4.1.7",
-    "wxt": "0.19.29"
+    "vitest": "4.1.9",
+    "wxt": "0.20.27"
   },
   "overrides": {
-    "vite": "7.3.2",
+    "vite": "7.3.5",
     "wxt": {
-      "vite": "6.4.2"
+      "vite": "6.4.3"
     },
     "rollup": "4.59.0",
-    "tar": "7.5.11",
+    "tar": "7.5.16",
     "node-forge": "1.4.0",
     "defu": "6.1.5",
     "postcss": "8.5.10",
-    "ws": "8.20.1",
-    "tmp": "0.2.6",
+    "ws": "8.21.0",
+    "tmp": "0.2.7",
     "shell-quote": "1.8.4",
     "uuid": "14.0.0",
     "minimatch": "10.2.3",
@@ -51,6 +51,9 @@
     },
     "brace-expansion": "5.0.6",
     "picomatch": "4.0.4",
+    "giget": "3.3.0",
+    "@babel/core": "7.29.7",
+    "esbuild": "0.27.2",
     "@aklinker1/rollup-plugin-visualizer": {
       "picomatch": "2.3.2"
     },
