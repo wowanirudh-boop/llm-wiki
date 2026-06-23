@@ -4,6 +4,11 @@ import { AuthRedirect } from './AuthRedirect'
 import { MotionDiv, MotionP } from './LandingMotion'
 
 const ease: [number, number, number, number] = [0.16, 1, 0.3, 1]
+const GITHUB_URL = 'https://github.com/wowanirudh-boop/llm-wiki'
+const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://llmwiki.app').replace(/\/$/, '')
+const SITE_HOST = new URL(SITE_URL).hostname
+const SITE_DESCRIPTION =
+  'Open-source knowledge base that lets AI assistants turn raw sources into a maintained wiki.'
 
 const WIKI_TREE = [
   { label: 'Overview', active: true, depth: 0 },
@@ -23,9 +28,8 @@ const jsonLd = {
   applicationCategory: 'ProductivityApplication',
   operatingSystem: 'Web',
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-  url: 'https://llmwiki.app',
-  description:
-    "Free, open-source implementation of Karpathy's LLM Wiki. Upload documents and build a compounding wiki directly via Claude.",
+  url: SITE_URL,
+  description: SITE_DESCRIPTION,
 }
 
 export default function LandingPage() {
@@ -48,7 +52,7 @@ export default function LandingPage() {
         </span>
         <div className="flex items-center gap-5">
           <Link
-            href="https://github.com/lucasastorian/llmwiki"
+            href={GITHUB_URL}
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             GitHub
@@ -78,7 +82,7 @@ export default function LandingPage() {
             transition={{ duration: 0.8, ease }}
           >
             <p className="text-sm text-muted-foreground mb-4">
-              Open-source implementation of{' '}
+              Inspired by{' '}
               <Link
                 href="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f"
                 className="text-foreground underline underline-offset-2 decoration-foreground/30 hover:decoration-foreground transition-colors"
@@ -116,7 +120,7 @@ export default function LandingPage() {
               <ArrowRight className="size-3.5 opacity-60" />
             </Link>
             <Link
-              href="https://github.com/lucasastorian/llmwiki"
+              href={GITHUB_URL}
               className="inline-flex items-center gap-2 rounded-full border border-border px-6 py-2.5 text-sm font-medium hover:bg-accent transition-colors"
             >
               GitHub
@@ -143,7 +147,7 @@ export default function LandingPage() {
               </div>
               <div className="flex-1 flex justify-center">
                 <span className="text-xs text-muted-foreground/50 font-mono">
-                  llmwiki.app
+                  {SITE_HOST}
                 </span>
               </div>
               <div className="w-14" />

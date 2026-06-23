@@ -145,7 +145,7 @@ export default function Settings({ onBack, onModeChange, isSignedIn, onSignOut }
           {mode === "cloud"
             ? showLocalConfig
               ? "Cloud stays active until the local URL connects"
-              : "Saves to llmwiki.app, requires sign in"
+              : "Saves to the hosted LLM Wiki service, requires sign in"
             : "Saves to your local LLM Wiki instance, no sign in needed"}
         </p>
       </div>

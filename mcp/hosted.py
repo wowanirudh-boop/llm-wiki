@@ -1,4 +1,4 @@
-"""Supavault MCP Server — knowledge vault tools for Claude."""
+"""LLM Wiki hosted MCP server."""
 
 import importlib.util
 import os

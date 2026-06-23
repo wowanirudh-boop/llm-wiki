@@ -2,11 +2,20 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](https://opensource.org/licenses/Apache-2.0)
 
-Open-source implementation of [Karpathy's LLM Wiki](https://x.com/karpathy/status/2039805659525644595) ([spec](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)).
+An owned, maintained fork of the open-source implementation inspired by [Karpathy's LLM Wiki](https://x.com/karpathy/status/2039805659525644595) ([spec](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)). Upstream credit belongs to the original project; this fork tracks the hosted app, browser extension, and local MCP workflow together.
 
-I built this because research folders accumulate useful material faster than I can keep summaries, links, and citations current by hand. LLM Wiki offloads that editing work to Claude so I can focus on source selection and analysis instead.
+This project exists because research folders accumulate useful material faster than people can keep summaries, links, and citations current by hand. LLM Wiki offloads that editing work to an AI assistant so you can focus on source selection and analysis instead.
 
-Point it at a folder, start the local app, and connect Claude over MCP. From there, Claude reads your sources, writes wiki pages, and keeps links and citations in sync.
+Use it locally with a folder and MCP, or run the hosted stack with accounts, uploads, and browser clipping. From there, an MCP-capable assistant reads your sources, writes wiki pages, and keeps links and citations in sync.
+
+## Current capabilities
+
+- Local-first workspaces with SQLite indexing, filesystem-backed wiki pages, and stdio MCP.
+- Hosted mode with Supabase auth, Postgres, S3-backed file storage, and OAuth/API-key MCP access.
+- Browser extension for saving web pages and PDFs into a knowledge base.
+- Public and share-link wiki publishing in hosted mode.
+- Highlights and comments that are searchable through document chunks.
+- Reference graph rebuilds for citations and wiki cross-links.
 
 ![LLM Wiki — a compiled wiki page with citations and table of contents](wiki-page.png)
 
@@ -14,16 +23,16 @@ Point it at a folder, start the local app, and connect Claude over MCP. From the
 
 1. **You have a folder** — PDFs, notes, articles, spreadsheets. Your existing research.
 2. **LLM Wiki indexes it** — extracts text, chunks for search, builds a local SQLite index. Source files stay where they are.
-3. **Claude connects via MCP** — reads sources, writes wiki pages under `wiki/`, maintains cross-references and footnote citations.
-4. **The wiki improves** as Claude reads more of the workspace and writes more pages. Summaries, entity pages, and cross-references accumulate instead of being re-derived from scratch each conversation.
+3. **An MCP client connects** — reads sources, writes wiki pages under `wiki/`, maintains cross-references and footnote citations.
+4. **The wiki improves** as the assistant reads more of the workspace and writes more pages. Summaries, entity pages, and cross-references accumulate instead of being re-derived from scratch each conversation.
 
 ## Quick Start
 
 **Requirements:** Python 3.11+, Node.js 20+
 
 ```bash
-git clone https://github.com/lucasastorian/llmwiki.git
-cd llmwiki
+git clone https://github.com/wowanirudh-boop/llm-wiki.git
+cd llm-wiki
 
 # Install Python deps
 cd api && python -m venv .venv && source .venv/bin/activate
@@ -44,7 +53,7 @@ Open [localhost:3000](http://localhost:3000). Your files are indexed, wiki is sc
 
 > If `./llmwiki init` errors out on a fresh checkout, first make sure you're up to date with `master` and try again. If it still fails, open an issue with the full output; local setup gets fewer reports, so there may be undocumented edge cases.
 
-### Connect Claude
+### Connect an MCP client
 
 ```bash
 ./llmwiki mcp-config ~/research
@@ -52,7 +61,7 @@ Open [localhost:3000](http://localhost:3000). Your files are indexed, wiki is sc
 
 This prints a JSON snippet for `claude_desktop_config.json` (Claude Desktop) or `.claude/settings.json` (Claude Code). One workspace runs as one MCP server entry, so if you have multiple research folders, add one entry per folder.
 
-Then tell Claude: *"Read the guide, then ingest my sources and start building the wiki."*
+Then tell your client: *"Read the guide, then ingest my sources and start building the wiki."*
 
 ### Using with non-Claude clients
 
@@ -106,14 +115,14 @@ LLM Wiki adds two things to your folder. Source files are not moved or modified.
     cache/
 ```
 
-- `wiki/` — ordinary markdown files. Edit them in any editor. Claude writes and updates them via MCP.
+- `wiki/` — ordinary markdown files. Edit them in any editor. An MCP client writes and updates them via MCP.
 - `.llmwiki/` — SQLite search index and processed artifacts. Delete it anytime; `llmwiki reindex` rebuilds from the source files.
 
 By default, indexing, storage, and file writes happen on your machine. No cloud services required.
 
-## How Claude interacts with the workspace
+## How an MCP client interacts with the workspace
 
-Once connected, Claude has these tools:
+Once connected, the client has these tools:
 
 | Tool | Description |
 |------|-------------|
@@ -125,7 +134,7 @@ Once connected, Claude has these tools:
 | `append` | Append content to the end of an existing page |
 | `delete` | Delete documents by path or glob pattern |
 
-All writes go to disk first, then update the search index. If Claude creates `/wiki/concepts/attention.md`, that file appears on disk immediately.
+All writes go to disk first, then update the search index. If the client creates `/wiki/concepts/attention.md`, that file appears on disk immediately.
 
 ## Architecture
 
@@ -167,11 +176,11 @@ Set `MISTRAL_API_KEY` for higher-quality PDF OCR with better table and layout de
 - **One workspace = one MCP server.** If you work across multiple research projects, each gets its own folder and its own MCP entry. This is intentional — it keeps context and file access scoped.
 - **PDF table extraction is rough.** pdf-oxide extracts prose reliably but tables come through as messy text. For financial filings or data-heavy PDFs, Mistral OCR is significantly better.
 - **LibreOffice adds setup friction.** Office file conversion requires a local LibreOffice install. If you mostly work with PDFs and markdown, you can skip it entirely.
-- **No vector search in local mode.** Full-text search uses SQLite FTS5 (porter stemming). It works well for keyword queries but does not do semantic/embedding search. The hosted version at llmwiki.app uses PGroonga for ranked search.
+- **No vector search in local mode.** Full-text search uses SQLite FTS5 (porter stemming). It works well for keyword queries but does not do semantic/embedding search. Hosted deployments can use PGroonga for ranked search.
 
 ## Self-hosting the multi-tenant version
 
-If you want to run the hosted version (like [llmwiki.app](https://llmwiki.app)) with Postgres, Supabase auth, and S3:
+If you want to run the hosted version with Postgres, Supabase auth, and S3:
 
 <details>
 <summary>Hosted setup instructions</summary>
@@ -202,7 +211,7 @@ MODE=hosted DATABASE_URL=postgresql://... uvicorn main:app --port 8000
 ```bash
 cd mcp
 pip install -r requirements.txt
-MODE=hosted DATABASE_URL=postgresql://... uvicorn server:app --port 8080
+MODE=hosted DATABASE_URL=postgresql://... python -m hosted
 ```
 
 ### Web
@@ -245,7 +254,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 Personal wikis usually fail on maintenance, not intent. Someone has to update links, fix stale summaries, merge overlapping pages, and keep citations aligned with the source material. That work scales with the number of sources, and people stop doing it.
 
-LLM Wiki offloads that editing work. You choose the source material and direct the analysis. Claude handles the repetitive bookkeeping — updating cross-references, keeping summaries current, flagging contradictions, touching the 15 pages that a single new source affects.
+LLM Wiki offloads that editing work. You choose the source material and direct the analysis. Your MCP client handles the repetitive bookkeeping — updating cross-references, keeping summaries current, flagging contradictions, touching the 15 pages that a single new source affects.
 
 ## License
 

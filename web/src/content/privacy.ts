@@ -1,5 +1,7 @@
 export const privacy = `# Privacy Policy
 
+> Maintainer note: This policy text describes the upstream llmwiki.app hosted service operated by Polybius, L.L.C. Replace it before operating this fork as your own hosted service.
+
 **LLM Wiki** · Effective date: June 3, 2026
 
 LLM Wiki is operated by Polybius, L.L.C., a Delaware limited liability company ("Polybius," "we," "us," "our"). LLM Wiki is a free, open-source knowledge base service available at llmwiki.app. This policy explains what data we collect, how we use it, and your rights regarding that data.

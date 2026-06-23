@@ -1,5 +1,7 @@
 export const terms = `# Terms of Service
 
+> Maintainer note: This policy text describes the upstream llmwiki.app hosted service operated by Polybius, L.L.C. Replace it before operating this fork as your own hosted service.
+
 **LLM Wiki** · Effective date: June 3, 2026
 
 These terms govern your use of LLM Wiki ("the Service"), operated by Polybius, L.L.C., a Delaware limited liability company ("Polybius," "we," "us," "our"), at llmwiki.app. By using the Service, you agree to these terms.

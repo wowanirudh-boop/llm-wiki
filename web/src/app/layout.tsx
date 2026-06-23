@@ -15,14 +15,18 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://llmwiki.app").replace(/\/$/, "");
+const SITE_DESCRIPTION =
+  "Open-source knowledge base that lets AI assistants turn raw sources into a maintained wiki.";
+
 export const metadata: Metadata = {
   title: "LLM Wiki",
-  description: "Free, open-source implementation of Karpathy's LLM Wiki. Upload documents and build a compounding wiki directly via Claude.",
-  metadataBase: new URL("https://llmwiki.app"),
+  description: SITE_DESCRIPTION,
+  metadataBase: new URL(SITE_URL),
   openGraph: {
     title: "LLM Wiki",
-    description: "Free, open-source implementation of Karpathy's LLM Wiki. Upload documents and build a compounding wiki directly via Claude.",
-    url: "https://llmwiki.app",
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
     siteName: "LLM Wiki",
     type: "website",
     images: [{ url: "/og.png", width: 1200, height: 630, alt: "LLM Wiki" }],
@@ -30,12 +34,12 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "LLM Wiki",
-    description: "Free, open-source implementation of Karpathy's LLM Wiki. Upload documents and build a compounding wiki directly via Claude.",
+    description: SITE_DESCRIPTION,
     images: ["/og.png"],
   },
   // Signal to the LLM Wiki Chrome extension that this IS the wiki app — the
   // content script should bail out and let the in-app highlight UI run alone.
-  // Works for prod (llmwiki.app), dev (localhost), and any future host.
+  // Works for the configured production host, dev (localhost), and future hosts.
   other: {
     "llmwiki-app": "true",
   },

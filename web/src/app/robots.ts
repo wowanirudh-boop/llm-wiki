@@ -1,5 +1,7 @@
 import type { MetadataRoute } from 'next'
 
+const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://llmwiki.app').replace(/\/$/, '')
+
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
@@ -7,6 +9,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: ['/api/', '/oauth/', '/callback'],
     },
-    sitemap: 'https://llmwiki.app/sitemap.xml',
+    sitemap: `${SITE_URL}/sitemap.xml`,
   }
 }

@@ -56,7 +56,9 @@ CLAUDE.md
 supabase/.temp/
 
 # Local-only specs / scratch docs
-docs/
+docs/*
+!docs/
+!docs/highlights-in-search-spec.md
 
 # Local-only developer scripts (apply_migration.sh, one-shot utilities)
 scripts/

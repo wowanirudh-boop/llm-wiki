@@ -19,7 +19,7 @@ from pydantic import BaseModel
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Supavault Converter")
+app = FastAPI(title="LLM Wiki Converter")
 
 OFFICE_EXTENSIONS = {"pptx", "ppt", "docx", "doc"}
 PDF_EXTENSIONS = {"pdf"}

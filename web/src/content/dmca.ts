@@ -1,5 +1,7 @@
 export const dmca = `# DMCA Policy
 
+> Maintainer note: This policy text describes the upstream llmwiki.app hosted service operated by Polybius, L.L.C. Replace it before operating this fork as your own hosted service.
+
 **LLM Wiki** · Effective date: May 31, 2026
 
 LLM Wiki is operated by Polybius, L.L.C. If you believe material available through LLM Wiki infringes your copyright, please send a written notice to our designated agent.
