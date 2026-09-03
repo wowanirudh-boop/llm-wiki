@@ -54,7 +54,7 @@ jobs:
       # vulnerability. Complements osv-scan (which scans the whole repo)
       # by giving fast, diff-based feedback on PRs specifically.
       - name: Dependency Review
-        uses: actions/dependency-review-action@v4
+        uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: moderate
           comment-summary-in-pr: always
