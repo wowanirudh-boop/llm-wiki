@@ -11,7 +11,7 @@ export default defineConfig({
   //     against a real site (CSP, CORS, real DOM)
   //   - Uses your actual Chrome binary, in a separate profile dir, so this
   //     doesn't interfere with your normal browsing session
-  runner: {
+  webExt: {
     binaries: {
       chrome: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
     },

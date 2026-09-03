@@ -6,8 +6,8 @@ on:
   pull_request:
     branches: [master, dev]
   schedule:
-    # Daily at 06:00 UTC — catches advisories published after we last pushed.
-    - cron: "0 6 * * *"
+    # Weekly on Monday at 06:00 UTC — catches advisories without repeating daily failures.
+    - cron: "0 6 * * 1"
 
 permissions:
   actions: read        # required by upload-sarif to read workflow run metadata
@@ -17,20 +17,21 @@ permissions:
 
 jobs:
   osv-scan:
-    name: OSV Scanner (all lockfiles)
+    name: OSV Scanner (manifests + npm lockfiles)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      # Scans every lockfile in the repo. Single command covers npm + pip +
-      # cargo + go etc. — uses Google's OSV.dev advisory DB which aggregates
-      # GitHub Advisories, PyPA, RustSec, etc.
+      # Avoid OSV's transitive manifest resolver here; it can exhaust its
+      # iteration limit on Python requirements. The pip-audit job below scans
+      # the complete hash-locked Python environments.
       - name: Run OSV-Scanner
-        uses: google/osv-scanner-action/osv-scanner-action@v2.0.2
+        uses: google/osv-scanner-action/osv-scanner-action@v2.5.1
         with:
           scan-args: |-
-            --output=results.sarif
+            --output-file=results.sarif
             --format=sarif
+            --no-resolve
             --recursive
             ./
 
@@ -47,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Fails the PR if it introduces a new dependency with a known
       # vulnerability. Complements osv-scan (which scans the whole repo)
@@ -66,9 +67,9 @@ jobs:
       matrix:
         package_dir: [web, extension]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "20"
 
@@ -83,6 +84,18 @@ jobs:
         working-directory: ${{ matrix.package_dir }}
         run: npm audit --audit-level=moderate
 
+  deno-audit:
+    name: Deno audit (web)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: denoland/setup-deno@v2
+
+      - name: Audit Deno lockfile
+        working-directory: web
+        run: deno audit
+
   pip-audit:
     name: pip-audit (api + mcp + converter + tests)
     runs-on: ubuntu-latest
@@ -91,16 +104,16 @@ jobs:
       matrix:
         path: [api, mcp, converter, tests]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 
       - name: Install pip-audit
         run: pip install pip-audit
 
-      # api/ ships a hash-locked requirements.lock; others ship requirements.txt.
+      # Audit each component's hash-locked file when present.
       - name: Audit
         run: |
           if [ -f "${{ matrix.path }}/requirements.lock" ]; then

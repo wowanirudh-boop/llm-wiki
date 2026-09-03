@@ -274,7 +274,7 @@ export default defineBackground(() => {
         return { error: `Image fetch failed: ${response.status}` };
       }
 
-      const mimeType = (response.headers.get("content-type") || "").split(";", 1)[0].toLowerCase();
+      const mimeType = ((response.headers.get("content-type") || "").split(";", 1)[0] ?? "").toLowerCase();
       if (!["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"].includes(mimeType)) {
         return { error: `Unsupported image type: ${mimeType || "unknown"}` };
       }

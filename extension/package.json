@@ -17,18 +17,18 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "4.1.18",
+    "@tailwindcss/postcss": "4.3.3",
     "@types/chrome": "0.0.287",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@wxt-dev/module-react": "1.1.5",
     "autoprefixer": "10.4.24",
     "happy-dom": "20.10.6",
-    "postcss": "8.5.10",
-    "tailwindcss": "4.1.18",
+    "postcss": "8.5.28",
+    "tailwindcss": "4.3.3",
     "typescript": "5.9.3",
     "vitest": "4.1.9",
-    "wxt": "0.20.27"
+    "wxt": "0.21.4"
   },
   "overrides": {
     "vite": "7.3.5",
@@ -39,17 +39,17 @@
     "tar": "7.5.16",
     "node-forge": "1.4.0",
     "defu": "6.1.5",
-    "postcss": "8.5.10",
+    "postcss": "8.5.28",
     "ws": "8.21.0",
     "tmp": "0.2.7",
-    "shell-quote": "1.8.4",
+    "shell-quote": "1.10.0",
     "uuid": "14.0.0",
     "minimatch": "10.2.3",
     "multimatch": {
       "minimatch": "3.1.4",
-      "brace-expansion": "1.1.13"
+      "brace-expansion": "1.1.18"
     },
-    "brace-expansion": "5.0.6",
+    "brace-expansion": "5.0.9",
     "picomatch": "4.0.4",
     "giget": "3.3.0",
     "@babel/core": "7.29.7",

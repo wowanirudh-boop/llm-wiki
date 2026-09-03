@@ -156,7 +156,7 @@ export default function SaveForm({ apiUrl, accessToken }: Props) {
       // Run in the page so the extension's own marks/UI are stripped from
       // the snapshot — we don't want yellow <mark> nodes or the popover
       // floating in the saved HTML.
-      const [{ result }] = await chrome.scripting.executeScript({
+      const results = await chrome.scripting.executeScript({
         target: { tabId: tab.tabId },
         func: async () => {
           const MAX_IMAGES = 24;
@@ -338,7 +338,9 @@ export default function SaveForm({ apiUrl, accessToken }: Props) {
           }
         },
       });
-      html = result as string;
+      const extractedHtml = results[0]?.result;
+      if (typeof extractedHtml !== "string") throw new Error("Page extraction returned no content");
+      html = extractedHtml;
     } catch {
       throw new Error("Could not extract page content. Try refreshing the page.");
     }

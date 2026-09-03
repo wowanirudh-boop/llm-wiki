@@ -31,8 +31,9 @@ export default function KBPicker({ apiUrl, accessToken, value, onChange }: Props
     try {
       const list = await fetchKnowledgeBases(apiUrl, accessToken);
       setKbs(list);
-      if (!value && list.length > 0) {
-        onChange(list[0].id);
+      const first = list[0];
+      if (!value && first) {
+        onChange(first.id);
       }
     } catch {
       setError("Failed to load knowledge bases");
