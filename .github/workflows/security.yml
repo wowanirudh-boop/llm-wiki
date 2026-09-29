@@ -26,7 +26,7 @@ jobs:
       # iteration limit on Python requirements. The pip-audit job below scans
       # the complete hash-locked Python environments.
       - name: Run OSV-Scanner
-        uses: google/osv-scanner-action/osv-scanner-action@v2.5.1
+        uses: google/osv-scanner-action/osv-scanner-action@v2.6.0
         with:
           scan-args: |-
             --output-file=results.sarif
@@ -54,7 +54,7 @@ jobs:
       # vulnerability. Complements osv-scan (which scans the whole repo)
       # by giving fast, diff-based feedback on PRs specifically.
       - name: Dependency Review
-        uses: actions/dependency-review-action@v4
+        uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: moderate
           comment-summary-in-pr: always
@@ -113,11 +113,12 @@ jobs:
       - name: Install pip-audit
         run: pip install pip-audit
 
-      # Audit each component's hash-locked file when present.
+      # Audit the manifest and lock together so stale dependency pins fail CI.
+      # Read the lock first so pip keeps its hashes for duplicate requirements.
       - name: Audit
         run: |
           if [ -f "${{ matrix.path }}/requirements.lock" ]; then
-            pip-audit -r "${{ matrix.path }}/requirements.lock" --strict --desc
+            pip-audit -r "${{ matrix.path }}/requirements.lock" -r "${{ matrix.path }}/requirements.txt" --strict --desc
           else
             pip-audit -r "${{ matrix.path }}/requirements.txt" --strict --desc
           fi
