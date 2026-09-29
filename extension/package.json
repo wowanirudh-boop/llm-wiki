@@ -13,13 +13,13 @@
   },
   "dependencies": {
     "@supabase/auth-js": "2.95.3",
-    "react": "19.2.4",
+    "react": "19.2.8",
     "react-dom": "19.2.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.3",
     "@types/chrome": "0.0.287",
-    "@types/react": "19.2.14",
+    "@types/react": "19.2.18",
     "@types/react-dom": "19.2.3",
     "@wxt-dev/module-react": "1.1.5",
     "autoprefixer": "10.4.24",
