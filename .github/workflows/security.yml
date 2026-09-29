@@ -26,7 +26,7 @@ jobs:
       # iteration limit on Python requirements. The pip-audit job below scans
       # the complete hash-locked Python environments.
       - name: Run OSV-Scanner
-        uses: google/osv-scanner-action/osv-scanner-action@v2.5.1
+        uses: google/osv-scanner-action/osv-scanner-action@v2.6.0
         with:
           scan-args: |-
             --output-file=results.sarif
