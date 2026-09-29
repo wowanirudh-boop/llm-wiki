@@ -113,11 +113,11 @@ jobs:
       - name: Install pip-audit
         run: pip install pip-audit
 
-      # Audit each component's hash-locked file when present.
+      # Audit the manifest and lock together so stale dependency pins fail CI.
       - name: Audit
         run: |
           if [ -f "${{ matrix.path }}/requirements.lock" ]; then
-            pip-audit -r "${{ matrix.path }}/requirements.lock" --strict --desc
+            pip-audit -r "${{ matrix.path }}/requirements.txt" -r "${{ matrix.path }}/requirements.lock" --strict --desc
           else
             pip-audit -r "${{ matrix.path }}/requirements.txt" --strict --desc
           fi

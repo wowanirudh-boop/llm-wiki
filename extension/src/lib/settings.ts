@@ -21,7 +21,7 @@ export async function setMode(mode: Mode): Promise<void> {
 export async function getApiUrl(): Promise<string> {
   const mode = await getMode();
   if (mode === "local") {
-    const result = await chrome.storage.local.get(LOCAL_URL_KEY);
+    const result = await chrome.storage.local.get<Record<string, string>>(LOCAL_URL_KEY);
     return result[LOCAL_URL_KEY] || DEFAULT_LOCAL_URL;
   }
   return DEFAULT_CLOUD_URL;
@@ -32,7 +32,7 @@ export async function setLocalUrl(url: string): Promise<void> {
 }
 
 export async function getLocalUrl(): Promise<string> {
-  const result = await chrome.storage.local.get(LOCAL_URL_KEY);
+  const result = await chrome.storage.local.get<Record<string, string>>(LOCAL_URL_KEY);
   return result[LOCAL_URL_KEY] || DEFAULT_LOCAL_URL;
 }
 

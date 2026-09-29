@@ -7,7 +7,7 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./constants";
  */
 const chromeStorageAdapter = {
   getItem: async (key: string): Promise<string | null> => {
-    const result = await chrome.storage.local.get(key);
+    const result = await chrome.storage.local.get<Record<string, string>>(key);
     return result[key] ?? null;
   },
   setItem: async (key: string, value: string): Promise<void> => {
