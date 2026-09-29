@@ -114,10 +114,11 @@ jobs:
         run: pip install pip-audit
 
       # Audit the manifest and lock together so stale dependency pins fail CI.
+      # Read the lock first so pip keeps its hashes for duplicate requirements.
       - name: Audit
         run: |
           if [ -f "${{ matrix.path }}/requirements.lock" ]; then
-            pip-audit -r "${{ matrix.path }}/requirements.txt" -r "${{ matrix.path }}/requirements.lock" --strict --desc
+            pip-audit -r "${{ matrix.path }}/requirements.lock" -r "${{ matrix.path }}/requirements.txt" --strict --desc
           else
             pip-audit -r "${{ matrix.path }}/requirements.txt" --strict --desc
           fi
