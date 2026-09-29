@@ -1,4 +1,4 @@
-mcp[cli]==1.28.1
+mcp[cli]==2.2.0
 asyncpg==0.31.0
 pyjwt[crypto]==2.13.0
 pydantic==2.13.5
