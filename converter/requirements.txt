@@ -3,6 +3,6 @@ starlette==1.6.0
 idna>=3.19
 uvicorn[standard]==0.52.4
 httpx==0.28.1
-opendataloader-pdf==2.5.7
+opendataloader-pdf==2.5.12
 # Pinned to override vulnerable transitive resolutions.
 anyio==4.14.2
