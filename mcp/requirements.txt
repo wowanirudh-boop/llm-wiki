@@ -3,7 +3,7 @@ asyncpg==0.31.0
 pyjwt[crypto]==2.15.1
 pydantic==2.13.5
 pydantic-settings==2.15.0
-uvicorn[standard]==0.52.4
+uvicorn[standard]==0.54.0
 logfire[asyncpg]==4.41.0
 aioboto3==15.5.0
 sentry-sdk==2.68.1
