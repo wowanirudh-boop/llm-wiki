@@ -9,5 +9,5 @@ pyyaml==6.0.3
 # Pinned to override vulnerable transitive resolutions.
 anyio==4.14.2
 starlette==1.6.0
-idna>=3.19
+idna>=3.20
 pygments==2.20.0
