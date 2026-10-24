@@ -5,4 +5,4 @@ uvicorn[standard]==0.52.4
 httpx==0.28.1
 opendataloader-pdf==2.5.7
 # Pinned to override vulnerable transitive resolutions.
-anyio==4.14.2
+anyio==4.15.1
