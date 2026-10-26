@@ -9,5 +9,7 @@ const nextConfig: NextConfig = {
 
 export default withSentryConfig(nextConfig, {
   silent: true,
+  // Build diagnostics are optional; do not send build metadata to Sentry.
+  telemetry: false,
   disableLogger: true,
 });
