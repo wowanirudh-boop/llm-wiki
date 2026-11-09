@@ -15,3 +15,9 @@ Dependabot groups routine minor/patch updates to reduce repeated PR runs. Its Py
 ## October 26 update
 
 This patch updates the affected Next.js/Sentry/Zod and sanitization/parser dependencies, extension test/build tooling, and Python certificate/telemetry dependencies. Logfire 4.41 restricts the OpenTelemetry SDK below 1.45; resolving the OpenTelemetry API fix therefore requires the coordinated Logfire 5.4/SDK update, not an isolated API override. Review the generated locks and test results as a unit.
+
+## November 9 follow-up
+
+GHSA-3g3m-2fjr-6pw4 affects glob through 14.0.1 and GHSA-g3hv-75wg-m249 affects minimatch 7.x through 11.0.0. The Sentry 10.x bundler dependency still requests glob 13.x, so the web manifest narrowly overrides `@sentry/bundler-plugins` to glob 14.0.4, which requires patched minimatch 11.0.5. This avoids upgrading the application Sentry SDK to a new major. Both npm and Deno locks must contain the patched chain.
+
+The override is a transitive major update, not an assumed drop-in fix. `cd web && npm test` exercises Sentry's actual `globFiles` wrapper: source-map discovery, absolute paths, directory exclusion, pattern arrays, ignore patterns, unmatched assets, cancellation, and minimatch's expansion budget. CI runs those tests along with the production build. Keep them and the lockfile version assertions aligned when changing or removing the override; remove it once a compatible Sentry release requests patched glob itself.
