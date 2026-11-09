@@ -33,6 +33,10 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Check web dependency compatibility
+        if: matrix.package_dir == 'web'
+        run: npm test
+
       - name: Check extension types and tests
         if: matrix.package_dir == 'extension'
         run: |

@@ -71,7 +71,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "22"
 
       # `npm ci` enforces the committed lockfile's SHA-512 integrity hashes;
       # it refuses to install if package.json drifted from package-lock.json.

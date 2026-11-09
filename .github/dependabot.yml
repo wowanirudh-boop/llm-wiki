@@ -10,27 +10,63 @@ updates:
     schedule:
       interval: weekly
 
+    # Group compatible routine bumps; major upgrades remain separate.
+    groups:
+      routine-updates:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: npm
     directory: "/extension"
     schedule:
       interval: weekly
 
+    # Group compatible routine bumps; major upgrades remain separate.
+    groups:
+      routine-updates:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: pip
     directory: "/api"
     schedule:
       interval: weekly
 
+    # Group compatible routine bumps; major upgrades remain separate.
+    groups:
+      routine-updates:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: pip
     directory: "/mcp"
     schedule:
       interval: weekly
 
+    # Group compatible routine bumps; major upgrades remain separate.
+    groups:
+      routine-updates:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: pip
     directory: "/converter"
     schedule:
       interval: weekly
 
+    # Group compatible routine bumps; major upgrades remain separate.
+    groups:
+      routine-updates:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: pip
     directory: "/tests"
     schedule:
       interval: weekly
+    # Group compatible routine bumps; major upgrades remain separate.
+    groups:
+      routine-updates:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
