@@ -1,0 +1,75 @@
+name: Dependency locks
+
+on:
+  pull_request:
+    branches: [master, dev]
+  push:
+    branches: [master, dev]
+  workflow_dispatch:
+
+# Never run privileged pull_request_target or push to a contributor's branch.
+permissions:
+  contents: read
+
+jobs:
+  parity:
+    name: Manifest and lock parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - run: python -m pip install packaging==26.0
+      - run: python tools/check-dependency-locks.py
+      - run: python -m unittest discover -s tests/maintenance -v
+
+  repair-patch:
+    name: Prepare reviewed lock repair
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Select affected dependency environments
+        id: affected
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = workflow_dispatch ]; then
+            echo 'services=all' >> "$GITHUB_OUTPUT"
+          else
+            services=$(git diff --name-only "$BASE_SHA...$HEAD_SHA" -- '*/requirements.txt' '*/package.json' | sed -nE 's#^(api|mcp|converter|tests|web|extension)/(requirements.txt|package.json)$#\1#p' | sort -u | tr '\n' ' ')
+            echo "services=$services" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@v7
+        if: steps.affected.outputs.services != ''
+        with:
+          node-version: '22'
+      - uses: denoland/setup-deno@v2
+        if: steps.affected.outputs.services != ''
+      - uses: astral-sh/setup-uv@v7
+        if: steps.affected.outputs.services != ''
+      - name: Generate coordinated locks and patch
+        if: steps.affected.outputs.services != ''
+        env:
+          SERVICES: ${{ steps.affected.outputs.services }}
+        run: |
+          # SERVICES contains only the fixed service names produced above.
+          bash tools/update-dependency-locks.sh $SERVICES
+          git diff --binary -- api/requirements.lock mcp/requirements.lock converter/requirements.lock tests/requirements.lock web/package-lock.json web/deno.lock extension/package-lock.json > dependency-lock-repair.patch
+          if [ -s dependency-lock-repair.patch ]; then
+            echo '### Lock repair available' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Download dependency-lock-repair, review the diff, then apply with `git apply dependency-lock-repair.patch` and commit. This workflow does not write to your branch. Rerun all checks after applying.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'No lock repair needed for the selected manifests.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: steps.affected.outputs.services != ''
+        with:
+          name: dependency-lock-repair
+          path: dependency-lock-repair.patch
+          retention-days: 7
