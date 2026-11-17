@@ -28,7 +28,7 @@ Use it locally with a folder and MCP, or run the hosted stack with accounts, upl
 
 ## Quick Start
 
-**Requirements:** Python 3.11+, Node.js 20+
+**Requirements:** Python 3.11.5+, Node.js 20+
 
 ```bash
 git clone https://github.com/wowanirudh-boop/llm-wiki.git
@@ -187,7 +187,7 @@ If you want to run the hosted version with Postgres, Supabase auth, and S3:
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.11.5+
 - Node.js 20+
 - A [Supabase](https://supabase.com) project
 - An S3-compatible bucket

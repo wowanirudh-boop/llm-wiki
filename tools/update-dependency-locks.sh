@@ -13,9 +13,10 @@ trap 'rm -rf "$deno_tmp"' EXIT
 cp web/package.json "$deno_tmp/package.json"
 (cd "$deno_tmp" && deno install --lockfile-only)
 cp "$deno_tmp/deno.lock" web/deno.lock
-uv pip compile api/requirements.txt --python-version 3.11 --universal --output-file api/requirements.lock --generate-hashes
+# Soup Sieve 4 requires Python >=3.11.5; resolve the supported API/MCP floor.
+uv pip compile api/requirements.txt --python-version 3.11.5 --universal --output-file api/requirements.lock --generate-hashes
 # CI installs API and MCP together: keep their shared packages compatible.
-uv pip compile mcp/requirements.txt --python-version 3.11 --universal --constraint api/requirements.lock --output-file mcp/requirements.lock --generate-hashes
+uv pip compile mcp/requirements.txt --python-version 3.11.5 --universal --constraint api/requirements.lock --output-file mcp/requirements.lock --generate-hashes
 for package_dir in converter tests; do
   uv pip compile "$package_dir/requirements.txt" --python-version 3.11 --universal --output-file "$package_dir/requirements.lock" --generate-hashes
 done
